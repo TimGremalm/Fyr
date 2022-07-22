@@ -19,9 +19,15 @@ http://tim.gremalm.se
 #include "controller.h"
 #include "hall.h"
 #include "light.h"
+#include "motor.h"
 
+// Init global variable
 uint8_t dmx_data[513];
 uint16_t hall_data;
+
+// Declare thread pin to core
+#define CORE_APP 0
+#define CORE_IMP 1
 
 static const char *TAG = "FyrMain";
 
@@ -35,9 +41,10 @@ void app_main(void) {
 	}
 	ESP_ERROR_CHECK(ret);
 
-	xTaskCreate(&dmxtask, "dmx_task", 4096, NULL, 5, NULL);
-	xTaskCreate(&controllertask, "controller_task", 4096, NULL, 5, NULL);
-	xTaskCreate(&halltask, "hall_task", 4096, NULL, 5, NULL);
-	xTaskCreate(&lighttask, "light_task", 4096, NULL, 5, NULL);
+	xTaskCreatePinnedToCore(&dmxtask, "dmx_task", 4096, NULL, 5, NULL, CORE_APP);
+	xTaskCreatePinnedToCore(&controllertask, "controller_task", 4096, NULL, 5, NULL, CORE_APP);
+	xTaskCreatePinnedToCore(&halltask, "hall_task", 4096, NULL, 5, NULL, CORE_APP);
+	xTaskCreatePinnedToCore(&lighttask, "light_task", 4096, NULL, 5, NULL, CORE_APP);
+	xTaskCreatePinnedToCore(&motortask, "motor_task", 4096, NULL, 5, NULL, CORE_IMP);
 }
 
