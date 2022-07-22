@@ -7,9 +7,11 @@ Lighthouse electronics for receiving DMX512.
 * PICO Pin Definitions https://demo-dijiudu.readthedocs.io/en/latest/get-started/get-started-pico-kit.html#pin-descriptions
 * PICO D4 datasheet https://espressif.com/sites/default/files/documentation/esp32-pico-d4_datasheet_en.pdf
 * ESP32 ADC https://randomnerdtutorials.com/esp32-adc-analog-read-arduino-ide/
+* ESP32 UART https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
 
 ## Electronics
 * Light development board: LightboxNano https://github.com/TimGremalm/LightboxNano
+* LighboxNano schematics https://raw.githubusercontent.com/TimGremalm/LightBoxNano/master/output/LightBoxNano.pdf
 * Hall effect sensor OH49E https://datasheetspdf.com/pdf-file/1418337/Ouzhuo/OH49E/1
 
 # Inspiration

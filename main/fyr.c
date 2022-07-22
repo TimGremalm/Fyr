@@ -17,8 +17,10 @@ http://tim.gremalm.se
 
 #include "dmx.h"
 #include "controller.h"
+#include "hall.h"
 
 uint8_t dmx_data[513];
+uint16_t hall_data;
 
 static const char *TAG = "FyrMain";
 
@@ -34,5 +36,6 @@ void app_main(void) {
 
 	xTaskCreate(&dmxtask, "dmx_task", 4096, NULL, 5, NULL);
 	xTaskCreate(&controllertask, "controller_task", 4096, NULL, 5, NULL);
+	xTaskCreate(&halltask, "hall_task", 4096, NULL, 5, NULL);
 }
 
