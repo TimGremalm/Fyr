@@ -19,7 +19,7 @@ void controllertask(void *pvParameters) {
 		// ESP_LOGI(TAG, "DMX Channel 2: %d", dmx_data[2]);
 		// ESP_LOGI(TAG, "DMX Channel 512: %d", dmx_data[512]);
 		ESP_LOGI(TAG, "Hall sensor: %d", hall_data);
-		vTaskDelay(200 / portTICK_PERIOD_MS);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
 }
 
