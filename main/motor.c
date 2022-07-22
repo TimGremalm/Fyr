@@ -10,6 +10,7 @@
 #include "driver/gpio.h"
 
 #include "dmx.h"
+#include "hall.h"
 
 /*
 A A3967SLB Stepper Driver rotates the LED assembly.
@@ -46,6 +47,7 @@ int8_t stepperSpeedAcceleration = 0;  // Acceleration -1 decrease, 0 stable, 1 i
 int8_t stepperSpeedAccelerationPrevious = 0;
 int8_t stepperDirection = 0;  // Direction: -1 backwards, 0 stop, 1 forward
 int8_t stepperDirectionPrevious = 0;
+uint32_t lastSleepKick = 0;
 
 // Motor adjustment variables
 uint16_t stepperStepsPerRevolution = 0;
@@ -121,7 +123,6 @@ void setSpeedMin(uint16_t value) {
 
 void step() {
 	int16_t diff = positionGoal - positionActual;
-	// int16_t diffAbs = abs(diff);
 	// Check direction
 	if (diff > 0) {
 		stepperDirection =  1;
@@ -179,6 +180,14 @@ void dmx_read() {
 	}
 }
 
+void check_last_sleep() {
+	uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+	if ((now - lastSleepKick) > 4000) {
+		// ESP_LOGI(TAG, "Time to pet thread watchdog timer.");
+		vTaskDelay(11 / portTICK_PERIOD_MS);
+		lastSleepKick = now;
+	}
+}
 
 void motortask(void *pvParameters) {
 	ESP_LOGI(TAG, "Start");
@@ -213,14 +222,14 @@ void motortask(void *pvParameters) {
 	gpio_reset_pin(STEPPER_DIR_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_DIR_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
 	gpio_set_level(STEPPER_DIR_PIN, 0);  // Low to enable receiver
-	
+
 	// Stepper driver A3967
 	setMicroSteppingMode(step_full);
 
 	while(1) {
 		dmx_read();
 		step();
-		// vTaskDelay(2000 / portTICK_PERIOD_MS);
+		check_last_sleep();
 	}
 }
 
