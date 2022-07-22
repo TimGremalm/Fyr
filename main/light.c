@@ -54,9 +54,6 @@ COB LED RGBW 50W https://www.ebay.co.uk/itm/174494407631
 #define DMX_CHANNEL_GREEN 2
 #define DMX_CHANNEL_BLUE 3
 #define DMX_CHANNEL_WHITE 4
-#define DMX_CHANNEL_MOTOR_LSB 5
-#define DMX_CHANNEL_MOTOR_MSB 6
-#define DMX_CHANNEL_MOTOR_SPEED 7
 
 static const char *TAG = "FyrLight";
 
