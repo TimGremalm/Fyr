@@ -64,6 +64,13 @@ uint8_t motor_msb = 0;
 uint8_t motor_speed = 0;
 uint8_t motor_speed_previous = 0;
 
+// Hall limits
+uint16_t hall_limit_on = 2190;
+uint16_t hall_limit_off = 2000;
+uint16_t hall_twelve_position = 0;
+uint16_t hall_twelve_direction = 0;
+uint16_t hall_twelve_state = 0;
+
 enum microstepping {
 	step_full,
 	step_half,
@@ -120,6 +127,27 @@ void setSpeedMin(uint16_t value) {
 	ESP_LOGI(TAG, "Step Min Puls us: %d", stepperStepMinPulseMs);
 }
 
+void check_hall() {
+	/*
+	Hall sensor seems to be around 1800 when idle.
+	At 12'o'clock it's around 2190.
+	limit_on and off creates a hysteresis effect.
+	*/
+	if (hall_twelve_state == 0 && hall_data > hall_limit_on) {
+		hall_twelve_state = 1;
+		hall_twelve_position = positionActual;
+		hall_twelve_direction = stepperDirection;
+		ESP_LOGI(TAG, "Hall On: %d, Position: %d, Direction: %d",
+		         hall_data, positionActual, stepperDirection);
+	}
+	if (hall_twelve_state == 1 && hall_data < hall_limit_off) {
+		hall_twelve_state = 0;
+		hall_twelve_position = positionActual;
+		hall_twelve_direction = stepperDirection;
+		ESP_LOGI(TAG, "Hall Off: %d, Position: %d, Direction: %d",
+		         hall_data, positionActual, stepperDirection);
+	}
+}
 
 void step() {
 	int16_t diff = positionGoal - positionActual;
@@ -136,8 +164,12 @@ void step() {
 		stepperDirectionPrevious = stepperDirection;
 		if (stepperDirection == 1) {
 			setDirectionRight();
-		} else {
+			ESP_LOGI(TAG, "Position %d Going: Right", positionActual);
+		} else if (stepperDirection == -1) {
 			setDirectionLeft();
+			ESP_LOGI(TAG, "Position %d Going: Left", positionActual);
+		} else {
+			ESP_LOGI(TAG, "Position %d Going: Stop", positionActual);
 		}
 		/*
 		// When switching direction acceleration shall always restart
@@ -205,29 +237,30 @@ void motortask(void *pvParameters) {
 	// Setup stepper pins
 	gpio_reset_pin(STEPPER_ENABLE_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_ENABLE_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
-	gpio_set_level(STEPPER_ENABLE_PIN, 0);  // Low to enable receiver
+	gpio_set_level(STEPPER_ENABLE_PIN, 0);
 
 	gpio_reset_pin(STEPPER_MS1_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_MS1_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
-	gpio_set_level(STEPPER_MS1_PIN, 0);  // Low to enable receiver
+	gpio_set_level(STEPPER_MS1_PIN, 0);
 
 	gpio_reset_pin(STEPPER_MS2_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_MS2_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
-	gpio_set_level(STEPPER_MS2_PIN, 0);  // Low to enable receiver
+	gpio_set_level(STEPPER_MS2_PIN, 0);
 
 	gpio_reset_pin(STEPPER_STEP_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_STEP_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
-	gpio_set_level(STEPPER_STEP_PIN, 0);  // Low to enable receiver
+	gpio_set_level(STEPPER_STEP_PIN, 0);
 
 	gpio_reset_pin(STEPPER_DIR_PIN);  // Set pad driver capability to GPIO
 	gpio_set_direction(STEPPER_DIR_PIN, GPIO_MODE_OUTPUT);  // Set the GPIO as a push/pull output
-	gpio_set_level(STEPPER_DIR_PIN, 0);  // Low to enable receiver
+	gpio_set_level(STEPPER_DIR_PIN, 0);
 
 	// Stepper driver A3967
 	setMicroSteppingMode(step_full);
 
 	while(1) {
 		dmx_read();
+		check_hall();
 		step();
 		check_last_sleep();
 	}

@@ -23,7 +23,7 @@ DMX parsing inspired by https://github.com/luksal/ESP32-DMX
 
 ## Rehash build environment
 ```bash
-get-idf
+get_idf
 ```
 
 # Build and flash
