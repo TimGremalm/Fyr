@@ -67,6 +67,7 @@ uint8_t motor_speed_previous = 0;
 // Hall limits
 uint16_t hall_limit_on = 2190;
 uint16_t hall_limit_off = 2000;
+uint16_t twelve_gap = 3000;
 uint16_t hall_twelve_position = 0;
 uint16_t hall_twelve_direction = 0;
 uint16_t hall_twelve_state = 0;
@@ -139,6 +140,11 @@ void check_hall() {
 		hall_twelve_direction = stepperDirection;
 		ESP_LOGI(TAG, "Hall On: %d, Position: %d, Direction: %d",
 		         hall_data, positionActual, stepperDirection);
+		if (stepperDirection == 1) {
+			positionActual = 0 - (twelve_gap/2);
+		} else if (stepperDirection == -1) {
+			positionActual = 0 + (twelve_gap/2);
+		}
 	}
 	if (hall_twelve_state == 1 && hall_data < hall_limit_off) {
 		hall_twelve_state = 0;
