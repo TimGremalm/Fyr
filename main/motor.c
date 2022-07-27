@@ -35,7 +35,8 @@ PCBA Schematics https://raw.githubusercontent.com/TimGremalm/LightBoxNano/master
 #define DMX_CHANNEL_STARTT 1
 #define DMX_CHANNEL_MOTOR_LSB 5
 #define DMX_CHANNEL_MOTOR_MSB 6
-#define DMX_CHANNEL_MOTOR_SPEED 7
+#define DMX_CHANNEL_MOTOR_SPEED_MIN 7
+#define DMX_CHANNEL_MOTOR_SPEED_MAX 8
 
 static const char *TAG = "FyrMotor";
 
@@ -61,8 +62,10 @@ uint16_t stepperRamp = 0;
 
 uint8_t motor_lsb = 0;
 uint8_t motor_msb = 0;
-uint8_t motor_speed = 0;
-uint8_t motor_speed_previous = 0;
+uint8_t motor_speed_min = 0;
+uint8_t motor_speed_min_previous = 0;
+uint8_t motor_speed_max = 0;
+uint8_t motor_speed_max_previous = 0;
 
 // Hall limits
 uint16_t hall_limit_on = 2190;
@@ -124,8 +127,8 @@ void enableDriver() {
 void setSpeedMin(uint16_t value) {
 	stepperSpeedMin = value;
 	// stepperStepMinPulseMs = (1000/stepperSpeedMin) / 2;  // 1s / min speed / 2
-	stepperStepMinPulseMs = (((uint32_t)1000000)/stepperSpeedMin) / 2;  // 1s / min speed / 2
-	ESP_LOGI(TAG, "Step Min Puls us: %d", stepperStepMinPulseMs);
+	// stepperStepMinPulseMs = (((uint32_t)1000000)/stepperSpeedMin) / 2;  // 1s / min speed / 2
+	// ESP_LOGI(TAG, "Step Min Puls us: %d", stepperStepMinPulseMs);
 }
 
 void check_hall() {
@@ -157,6 +160,7 @@ void check_hall() {
 
 void step() {
 	int16_t diff = positionGoal - positionActual;
+	int16_t diffAbs = abs(diff);
 	// Check direction
 	if (diff > 0) {
 		stepperDirection =  1;
@@ -184,11 +188,44 @@ void step() {
 		stepperSpeedNow = stepperStepMinPulseMs;
 	}
 	stepperSpeedNow = stepperStepMinPulseMs;
+	// motor_speed_min = 0;
+	// motor_speed_max = 0;
+
+	// Test new acceleration and speed
+	// speed = diff
+	//   SpeedMin - SpeedMax / DiffMin - DiffMax
+	// smoother
+
+	// Set stepper speed extremes based on DMX-values.
+	float diff_scale = (float)diffAbs / (float)32767;
+	// Invert DMX-value, multiply by a range, and add offset                Range   Offset
+	uint16_t motor_speed_min_ms = ((((float)(255-motor_speed_min)) / 255) * 5000) + 1000;
+	// Sacale to float, multiply with range                                                          Range
+	// uint16_t motor_speed_max_ms = motor_speed_min_ms - ((uint16_t)((((float)motor_speed_max) / 255) * 5500));
+	uint16_t motor_speed_max_ms = (uint16_t)((((float)motor_speed_max) / 255) * 5500);
+	if (motor_speed_max_ms + 50 > motor_speed_min_ms) {
+		motor_speed_max_ms = 50;
+	} else {
+		motor_speed_max_ms = motor_speed_min_ms - motor_speed_max_ms;
+	}
+	// ESP_LOGI(TAG, "diff_scale: %f", diff_scale);
+	// ESP_LOGI(TAG, "motor_speed_min_ms: %d", motor_speed_min_ms);
+	// ESP_LOGI(TAG, "motor_speed_max_ms: %d", motor_speed_max_ms);
+
+	// Set goal target speed, but first get range
+	uint16_t stepper_speed_range_ms = motor_speed_min_ms - motor_speed_max_ms;
+	// Inverse scale, multiply to range
+	uint16_t stepper_speed_us = (stepper_speed_range_ms * (1.0 - diff_scale)) + motor_speed_max_ms;
+	// ESP_LOGI(TAG, "stepper_speed_range_ms: %d", stepper_speed_range_ms);
+	// ESP_LOGI(TAG, "stepper_speed_us: %d", stepper_speed_us);
+	stepperSpeedNow = stepper_speed_us;
+
 	// If at goal position, stop and return
 	if (diff == 0) {
 		stepperSpeedNow = 0;
 		return;
 	}
+
 	// Make step
 	if ((positionActual % stepperPosPerTurn) == 0) {
 		// Step High
@@ -209,12 +246,17 @@ void dmx_read() {
 	motor_msb = dmx_data[DMX_CHANNEL_STARTT + DMX_CHANNEL_MOTOR_MSB];
 	positionGoal = (motor_lsb<<8) + motor_msb;
 
-	motor_speed = dmx_data[DMX_CHANNEL_STARTT + DMX_CHANNEL_MOTOR_SPEED];
-
-	if (motor_speed != motor_speed_previous) {
+	motor_speed_min = dmx_data[DMX_CHANNEL_STARTT + DMX_CHANNEL_MOTOR_SPEED_MIN];
+	if (motor_speed_min != motor_speed_min_previous) {
 		// Set new speed, multiply 8-bit DMX-channel by 3
-		setSpeedMin(((uint16_t)motor_speed)*5);
-		motor_speed_previous = motor_speed;
+		setSpeedMin(((uint16_t)motor_speed_min)*5);
+		motor_speed_min_previous = motor_speed_min;
+	}
+
+	motor_speed_max = dmx_data[DMX_CHANNEL_STARTT + DMX_CHANNEL_MOTOR_SPEED_MAX];
+	if (motor_speed_max != motor_speed_max_previous) {
+		// Set new speed, multiply 8-bit DMX-channel by 3
+		motor_speed_max_previous = motor_speed_min;
 	}
 }
 
